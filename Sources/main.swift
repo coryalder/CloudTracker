@@ -23,7 +23,7 @@ let app = Application()
     Setup database
 */
 
-setupDatabase(models: [User.self, Meal.self, Rating.self])
+setupDatabase(models: [User.self, Meal.self])
 
 /**
     Routes
@@ -87,8 +87,8 @@ app.middleware(authware) {
         return Response(status: .ok, json: Json(["user" : user]))
     }
     
-    // not done!
-    // maybe this can wait.
+    // TODO: make this method work
+    // maybe this can wait. would also need an endpoint to retrieve the image.
     app.post("/users/me/profile_pic") {
         request in
         
@@ -117,7 +117,7 @@ app.middleware(authware) {
                 return Response(status: .badRequest, text: "missing fields")
         }
         
-        var meal = Meal(title: title, calories: calories, description: description, userId: userId)
+        var meal = Meal(title: title, calories: calories, description: description, rating: 0, userId: userId)
         
         do {
             try meal.save()
@@ -142,18 +142,13 @@ app.middleware(authware) {
         return Response(status: .ok, json: Json(mealJson))
     }
     
-    app.get("/users/me/ratings") {
+    
+    // TODO: this method needs an implementation
+    app.post("/users/me/meals", Int.self, "rate") {
         request in
         // return ratings posted by this user
         // returns [["score", "meal_id", "user_id", "comment"]]
         return Response(status: .ok, text: "ola")
-    }
-
-    app.post("/users/me/meals", Int.self ,"ratings") {
-        request, mealId in
-        // add a rating, or update an existing rating if it already exists
-        // "returns": ["score", "meal_id", "user_id", "comment"],
-        return Response(status: .ok, text: "meal id \(mealId)")
     }
 
 }

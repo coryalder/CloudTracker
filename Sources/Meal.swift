@@ -9,12 +9,14 @@ class Meal {
     var title: String
     var calories: Int
     var description: String
+    var rating: Int
     
-    init(title: String, calories: Int, description: String, userId: Int) {
+    init(title: String, calories: Int, description: String, rating: Int, userId: Int) {
         self.title = title
         self.calories = calories
         self.description = description
         self.userId = userId
+        self.rating = rating
     }
     
     required init(serialized: [String: Value]) {
@@ -24,6 +26,7 @@ class Meal {
     	calories = serialized["calories"]?.int ?? 0
     	description = serialized["description"]?.string ?? ""
     	userId = serialized["userId"]?.int ?? 0
+        rating = serialized["rating"]?.int ?? 0
     }
     
 }
@@ -32,6 +35,7 @@ extension Meal: Schemable {
     static let schema = "CREATE TABLE IF NOT EXISTS meals(" +
         "id INTEGER PRIMARY KEY AUTOINCREMENT," +
         "userId INTEGER NOT NULL," +
+        "rating INTEGER NOT NULL," +
         "title TEXT NOT NULL," +
         "calories INTEGER NOT NULL," +
         "description TEXT NOT NULL);"
@@ -43,6 +47,7 @@ extension Meal: Model {
             "title" : title,
             "calories" : calories,
             "description" : description,
+            "rating" : self.rating,
             "userId" : userId
         ]
     }
@@ -60,6 +65,7 @@ extension Meal: JsonRepresentable {
             "title": self.title,
             "calories": self.calories,
             "userId" : self.userId,
+            "rating" : self.rating,
             "description": self.description
         ])
     }
