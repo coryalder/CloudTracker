@@ -58,9 +58,9 @@ extension Meal: Model {
 }
 
 
-extension Meal: JsonRepresentable {
-    func makeJson() -> Json {
-        return Json([
+extension Meal: JSONRepresentable {
+    func makeJson() -> JSON {
+        return JSON([
             "id" : self.id?.int ?? 0,
             "title": self.title,
             "calories": self.calories,

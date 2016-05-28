@@ -1,6 +1,6 @@
 import Vapor
 
-let APIGuide: Json = Json([
+let APIGuide: JSON = JSON([
     "Login":
         [
             "description" : "Trade a login/password for a session token",

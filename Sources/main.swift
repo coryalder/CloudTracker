@@ -3,12 +3,8 @@ import Foundation
 import CryptoEssentials
 import Fluent
 import UUID
+import S4
 
-/*
-    TODO: Send auth token in headers not in params
-    TODO: Generate a random auth token instead of hashing username/pw, randomize every signup
-    TODO: 
-*/
 
 extension String {
     var sha256String: String {
@@ -36,9 +32,9 @@ app.get("/guide") { request in
 app.post("/signup") {
     request in
     
-    guard let username = request.data["username"] as? String,
-          let password = request.data["password"] as? String else {
-        return Response(status: .badRequest, text: "missing fields")
+    guard let username = request.data["username"].string,
+          let password = request.data["password"].string else {
+        return Response(status: .badRequest, text: "missing fields \(request.data)")
     }
     
     var user = User(username: username, password: password)
@@ -49,7 +45,7 @@ app.post("/signup") {
         return Response(status: .notAcceptable, text: "\(error)")
     }
     
-    return Response(status: .ok, json: Json(["user" : user]))
+    return Response(status: .ok, json: JSON(["user" : user]))
 }
 
 
@@ -62,47 +58,76 @@ app.post("/login") {
     }
     
     guard let maybeUser = try? User.query.filter("username", username).filter("password", password).first(),
-         let user = maybeUser else {
+         var user = maybeUser else {
         return Response(status: .unauthorized, text: "Bad username or password")
     }
     
     // update token
     user.token = UUID().description.sha256String
     
-    return Response(status: .ok, json: Json(["user": user]))
+    try user.save()
+    
+    return Response(status: .ok, json: JSON(["user": user]))
 }
 
 
 let authware = AuthMiddleware()
 
-app.middleware(authware) {
+app.grouped(authware) {
+    group in
     
-    app.get("/users/me") {
+    group.get("/users/me") {
         request in
         
         guard let user = request.storage["user"] as? User else {
             return Response(status: .badRequest, text: "User not found")
         }
         
-        return Response(status: .ok, json: Json(["user" : user]))
+        var out: [String: String] = [
+            "username": user.username,
+            "password": user.password,
+            "token": user.token
+        ]
+        
+        if let p = user.profile_pic_url {
+            out["profile_pic_url"] = p
+        }
+        
+        let jsoned = JSON(out)
+        
+        return Response(status: .ok, json: ["user" : jsoned ])
     }
     
     // TODO: make this method work
     // maybe this can wait. would also need an endpoint to retrieve the image.
-    app.post("/users/me/profile_pic") {
+    group.post("/users/me/profile_pic") {
         request in
         
-        guard let user = request.storage["user"] as? User else {
+        guard var user = request.storage["user"] as? User else {
             return Response(status: .badRequest, text: "User not found")
         }
         
-        // guard let data = // how to get full body of the request?
+        var request = request
         
-        return Response(status: .ok, json: Json(["id": "1"]))
+        guard let rawData = try? request.body.becomeBuffer() else {
+            throw ClientError.badRequest
+        }
+        
+        if let currentPicName = user.profile_pic_url {
+            try NSFileManager().removeItem(atPath: "./Public/\(currentPicName)")
+        }
+        
+        let data = NSData(bytes: rawData.bytes as [UInt8], length: rawData.bytes.count)
+        let fileName = UUID().description
+        try data.write(toFile:"./Public/\(fileName)")
+        
+        user.profile_pic_url = fileName
+        try user.save()
+        
+        return Response(status: .ok, json: JSON(["url": fileName]))
     }
     
-    
-    app.post("/users/me/meals") {
+    group.post("/users/me/meals") {
         request in
         
         guard let user = request.storage["user"] as? User,
@@ -125,10 +150,10 @@ app.middleware(authware) {
             return Response(status: .badRequest, text: "couldn't save meal \(error)")
         }
         
-        return Response(status: .ok, json: Json(["meal" : meal]))
+        return Response(status: .ok, json: JSON(["meal" : meal]))
     }
     
-    app.get("/users/me/meals") {
+    group.get("/users/me/meals") {
         request in
         
         guard let user = request.storage["user"] as? User,
@@ -139,23 +164,32 @@ app.middleware(authware) {
         
         let mealJson = meals.map { $0.makeJson() }
         
-        return Response(status: .ok, json: Json(mealJson))
+        return Response(status: .ok, json: JSON(mealJson))
     }
     
-    
-    // TODO: this method needs an implementation
-    app.post("/users/me/meals", Int.self, "rate") {
-        request in
-        // return ratings posted by this user
-        // returns [["score", "meal_id", "user_id", "comment"]]
-        return Response(status: .ok, text: "ola")
+    group.post("/users/me/meals", Int.self, "rate") {
+        request, mealId in
+        
+        guard let user = request.storage["user"] as? User,
+            let id = user.id else {
+            return Response(status: .badRequest, text: "User not found")
+        }
+        
+        do {
+            guard let meal = try Meal.query.filter("userId", id).filter("id", mealId).first() else {
+                throw ClientError.notFound
+            }
+            return Response(status: .ok, json: JSON(["meal": meal]))
+        } catch {
+            return Response(status: .notFound, text: "meal not found")
+        }
     }
 
 }
 
 
 
-app.start(port: 8000)
+app.start()
 
 
 

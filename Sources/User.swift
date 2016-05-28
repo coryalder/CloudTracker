@@ -58,17 +58,13 @@ extension User: Model {
 }
 
 
-extension User: JsonRepresentable {
-    func makeJson() -> Json {
-        
-        var out = [
+extension User: JSONRepresentable {
+    func makeJson() -> JSON {
+        return JSON([
             "username": self.username,
             "password": self.password,
-            "token": self.token
-        ]
-        
-        out["profile_pic_url"] = self.profile_pic_url
-        
-        return Json(out)
+            "token": self.token,
+            "profile_pic_url": self.profile_pic_url ?? ""
+        ])
     }
 }
