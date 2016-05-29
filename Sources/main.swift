@@ -146,8 +146,8 @@ app.grouped(authware) {
         }
         
         let mealJson = meals.map { $0.makeJson() }
-        
-        return Response(status: .ok, json: JSON(mealJson))
+        // this line does not work on linux:
+        return Response(status: .ok, json: ["meals": JSON(meals)]) // this version does work: return Response(status: .ok, json: JSON(mealJson))
     }
   
     group.post("/users/me/meals", Int.self, "rate") {
