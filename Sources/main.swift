@@ -135,7 +135,7 @@ app.grouped(authware) {
     
         return Response(status: .ok, json: JSON(["meal" : meal]))
     }
-    
+   
     group.get("/users/me/meals") {
         request in
         
@@ -147,9 +147,9 @@ app.grouped(authware) {
         
         let mealJson = meals.map { $0.makeJson() }
         
-        return Response(status: .ok, json: ["meals": JSON(meals)])
+        return Response(status: .ok, json: JSON(mealJson))
     }
-    
+  
     group.post("/users/me/meals", Int.self, "rate") {
         request, mealId in
         
