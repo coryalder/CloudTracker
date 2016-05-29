@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>CloudTracker API guide</title>
+        <script src="https://cdn.rawgit.com/showdownjs/showdown/1.4.1/dist/showdown.min.js" type="text/javascript" charset="utf-8"></script>
+    </head>
+    <body style="max-width: 800px; margin-left: auto; margin-right: auto; padding: 1em;">
+        <div id="markdown">
+
+# CloudTracker API Guide
+
+## Entities
+
+### User
+
+- username: String
+- password: String
+- token: String
+- profile\_pic\_url: String
+    not a full url, just the filename
+
+### Meal
+
+- calories: Int
+- description: String
+- title: String
+- userId: Int
+- id: Int
+- rating: Int
+
+## Authentication
+
+Authentication token should be sent via the `token` http header for all authenticated endpoints. That means everything except `/login` and `/signup`.
+
+An authentication token can be obtained via the signup or login endpoint. New users (`/signup`) are given a token that is a hash of their username and passsword. The `/login` endpoint invalidates the previous token, and creates a new token.
+
+## Errors
+
+All endpoints return errors as non 200 status codes, as well as a json object in this format:
+
+    {"error": "description of error"}
+
+
+## Endpoints
+
+### POST - `/Login`
+
+This endpoint is used to trade a login/password for a session token.
+
+#### Valid parameters
+
+- username: String
+- password: String
+
+#### Returns
+
+- user: User
+
+Returns 403 for bad credentials. Token from response can be sent as a header to access authenticated endpoints. Auth token not required.
+
+
+### POST - `/signup`
+
+This endpoint is used to create a new user.
+
+#### Valid parameters
+
+- username: String
+- password: String
+
+#### Returns
+
+- user: User
+
+Returns 400 for malformed/missing data, 409 for existing user. User's returned "token" property can be sent as a header to access authenticated endpoints. Auth token not required.
+
+### GET - `/users/me`
+
+This endpoint retrives the user's profile.
+
+#### Returns
+
+- user: User
+
+Returns 403 if session_token is missing.
+
+### POST - `/users/me/photo`
+
+Upload a profile photo for the currently authenticated user. Body of post should contain raw image data.
+
+#### Returns
+
+- image: String  
+	Contains the path, on this server, to retrieve the image from. e.g. `/profiles/1D5EE0C4-A96E-4B44-9A7C-652E978B3CB5`. Images are not modified in any way after uploading, supports `jpg`, `png`, and `gif` images.
+
+Returns 400 if data is missing.
+
+### GET - `/users/me/meals`
+
+This endpoint returns all meals owned by this user.
+
+#### Returns
+
+- meals: [Meal]
+
+
+
+### POST - `/users/me/meals`
+
+This endpoint is used to create a meal object owned by the currently authenticated user.
+
+#### Required parameters
+
+- title: String
+- calories: Int
+- description: String
+
+#### Returns
+
+- meal: Meal
+
+Returns an array of meals, empty if none available, 403 if bad token.
+
+### POST - `/users/me/meals/:id/rate`
+
+This endpoint is used to set the rating on a specific meal object. The :id is an Int that specifies which meal to rate.
+
+#### Required parameters
+
+- rating: Int
+
+#### Returns
+
+- meal: Meal
+
+Returns 403 if bad session, 404 if meal not found, 400 if missing request data.
+            
+        </div>
+        <div id="view">
+            
+        </div>
+    
+        <script>
+            var markdownNode = document.getElementById("markdown");
+            var text = markdownNode.innerHTML;
+            var converter = new showdown.Converter();
+            var viewNode = document.getElementById("view");
+            viewNode.innerHTML = converter.makeHtml(text);
+            markdownNode.style.display = 'none';
+        </script>
+    </body>
+</html>

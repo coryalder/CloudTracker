@@ -6,14 +6,7 @@ import UUID
 import S4
 
 
-extension String {
-    var sha256String: String {
-        return Base64.urlSafeEncode((self).sha256())
-    }
-}
-
 let app = Application()
-
 
 /**
     Setup database
@@ -21,29 +14,31 @@ let app = Application()
 
 setupDatabase(models: [User.self, Meal.self])
 
+func jsonError(_ string: String) -> JSON {
+    return JSON(["error": string])
+}
+
 /**
     Routes
 */
-
-app.get("/guide") { request in
-    return Response(status: .ok, json: APIGuide)
-}
 
 app.post("/signup") {
     request in
     
     guard let username = request.data["username"].string,
           let password = request.data["password"].string else {
-        return Response(status: .badRequest, text: "missing fields \(request.data)")
+        return Response(status: .badRequest, json: jsonError("missing fields \(request.data)"))
     }
     
+    // Check for an existing user
+    let existing = try User.query.filter("username", username).first()
+    if existing != nil {
+        return Response(status: .conflict, json: jsonError("Username already in use"))
+    }
+    
+    // Create and save a new user
     var user = User(username: username, password: password)
-    
-    do {
-        try user.save()
-    } catch {
-        return Response(status: .notAcceptable, text: "\(error)")
-    }
+    try user.save()
     
     return Response(status: .ok, json: JSON(["user" : user]))
 }
@@ -52,14 +47,14 @@ app.post("/signup") {
 app.post("/login") {
     request in
     
-    guard let username = request.data["username"] as? String,
-          let password = request.data["password"] as? String else {
-        return Response(status: .badRequest, text: "missing fields")
+    guard let username = request.data["username"].string,
+          let password = request.data["password"].string else {
+        return Response(status: .badRequest, json: jsonError("Missing a 'username' and/or 'password'"))
     }
     
     guard let maybeUser = try? User.query.filter("username", username).filter("password", password).first(),
          var user = maybeUser else {
-        return Response(status: .unauthorized, text: "Bad username or password")
+        return Response(status: .forbidden, json: jsonError("Bad username or password"))
     }
     
     // update token
@@ -80,31 +75,19 @@ app.grouped(authware) {
         request in
         
         guard let user = request.storage["user"] as? User else {
-            return Response(status: .badRequest, text: "User not found")
+            return Response(status: .badRequest, json: jsonError("User not found"))
         }
         
-        var out: [String: String] = [
-            "username": user.username,
-            "password": user.password,
-            "token": user.token
-        ]
-        
-        if let p = user.profile_pic_url {
-            out["profile_pic_url"] = p
-        }
-        
-        let jsoned = JSON(out)
-        
-        return Response(status: .ok, json: ["user" : jsoned ])
+        return Response(status: .ok, json: JSON(["user" : user ]))
     }
     
     // TODO: make this method work
     // maybe this can wait. would also need an endpoint to retrieve the image.
-    group.post("/users/me/profile_pic") {
+    group.post("/users/me/photo") {
         request in
         
         guard var user = request.storage["user"] as? User else {
-            return Response(status: .badRequest, text: "User not found")
+            return Response(status: .badRequest, json: jsonError("User not found"))
         }
         
         var request = request
@@ -114,17 +97,17 @@ app.grouped(authware) {
         }
         
         if let currentPicName = user.profile_pic_url {
-            try NSFileManager().removeItem(atPath: "./Public/\(currentPicName)")
+            try NSFileManager().removeItem(atPath: "./Public\(currentPicName)")
         }
         
         let data = NSData(bytes: rawData.bytes as [UInt8], length: rawData.bytes.count)
-        let fileName = UUID().description
-        try data.write(toFile:"./Public/\(fileName)")
+        let fileName = "/profiles/" + UUID().description
+        try data.write(toFile:"./Public\(fileName)")
         
         user.profile_pic_url = fileName
         try user.save()
         
-        return Response(status: .ok, json: JSON(["url": fileName]))
+        return Response(status: .ok, json: JSON(["image": fileName]))
     }
     
     group.post("/users/me/meals") {
@@ -132,24 +115,19 @@ app.grouped(authware) {
         
         guard let user = request.storage["user"] as? User,
              let userId = user.id?.int else {
-            return Response(status: .badRequest, text: "User not found")
+            return Response(status: .badRequest, json: jsonError("User not found"))
         }
         
-        guard let title = request.data["title"] as? String,
-            let caloriesStr = request.data["calories"] as? String,
+        guard let title = request.data["title"].string,
+            let caloriesStr = request.data["calories"].string,
             let calories = Int(caloriesStr), // this may be broken when we get JSON data.
-            let description = request.data["description"] as? String else {
-                return Response(status: .badRequest, text: "missing fields")
+            let description = request.data["description"].string else {
+                return Response(status: .badRequest, json: jsonError("missing fields"))
         }
         
         var meal = Meal(title: title, calories: calories, description: description, rating: 0, userId: userId)
-        
-        do {
-            try meal.save()
-        } catch {
-            return Response(status: .badRequest, text: "couldn't save meal \(error)")
-        }
-        
+        try meal.save()
+    
         return Response(status: .ok, json: JSON(["meal" : meal]))
     }
     
@@ -159,12 +137,12 @@ app.grouped(authware) {
         guard let user = request.storage["user"] as? User,
              let id = user.id,
              let meals = try? Meal.query.filter("userId",id).all() else {
-            return Response(status: .badRequest, text: "User not found")
+            return Response(status: .badRequest, json: jsonError("User not found"))
         }
         
         let mealJson = meals.map { $0.makeJson() }
         
-        return Response(status: .ok, json: JSON(mealJson))
+        return Response(status: .ok, json: ["meals": JSON(meals)])
     }
     
     group.post("/users/me/meals", Int.self, "rate") {
@@ -172,19 +150,29 @@ app.grouped(authware) {
         
         guard let user = request.storage["user"] as? User,
             let id = user.id else {
-            return Response(status: .badRequest, text: "User not found")
+            return Response(status: .badRequest, json: jsonError("User not found"))
         }
         
         do {
-            guard let meal = try Meal.query.filter("userId", id).filter("id", mealId).first() else {
+            guard var meal = try Meal.query.filter("userId", id).filter("id", mealId).first() else {
                 throw ClientError.notFound
             }
+         
+            guard let ratingStr = request.data["rating"].string,
+                 let rating = Int(ratingStr) else {
+                throw ClientError.badRequest
+            }
+        
+            meal.rating = max(0,min(5, rating))
+        
+            try meal.save()
+
             return Response(status: .ok, json: JSON(["meal": meal]))
         } catch {
-            return Response(status: .notFound, text: "meal not found")
+            return Response(status: .badRequest, json: jsonError("\(error)"))
         }
     }
-
+    
 }
 
 
