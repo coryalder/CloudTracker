@@ -6,7 +6,7 @@ let package = Package(
    dependencies: [
        .Package(url: "https://github.com/qutheory/vapor.git", majorVersion: 0, minor: 9),
        .Package(url: "https://github.com/qutheory/fluent.git", majorVersion: 0, minor: 3),
-       .Package(url: "https://github.com/qutheory/fluent-sqlite.git", majorVersion: 0, minor: 3),
+       .Package(url: "https://github.com/coryalder/fluent-sqlite", majorVersion: 0, minor: 3),
        .Package(url: "https://github.com/zewo/uuid.git", majorVersion: 0, minor: 2)
    ]
 )
