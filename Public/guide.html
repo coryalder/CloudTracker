@@ -4,7 +4,7 @@
         <title>CloudTracker API guide</title>
         <script src="https://cdn.rawgit.com/showdownjs/showdown/1.4.1/dist/showdown.min.js" type="text/javascript" charset="utf-8"></script>
     </head>
-    <body style="max-width: 800px; margin-left: auto; margin-right: auto; padding: 1em;">
+    <body style="max-width: 800px; margin-left: auto; margin-right: auto; padding: 1em; word-wrap: break-word;">
         <div id="markdown">
 # CloudTracker API Guide
 
@@ -15,14 +15,13 @@
 - username: String
 - password: String
 - token: String
-- profile\_pic\_url: String  
-    not a full url, just the path on this server. e.g. `/profiles/1D5EE0C4-A96E-4B44-9A7C-652E978B3CB5`
 
 ### Meal
 
 - calories: Int
 - description: String
 - title: String
+- imagePath: String - not a full url, just the path on this server. e.g. `/photos/1D5EE0C4-A96E-4B44-9A7C-652E978B3CB5`
 - userId: Int
 - id: Int
 - rating: Int
@@ -44,7 +43,7 @@ All endpoints return errors as non 200 status codes, as well as a json object in
 
 ### POST - `/Login`
 
-This endpoint is used to trade a login/password for a session token.
+This endpoint is used to trade a login/password for an auth token.
 
 #### Valid parameters
 
@@ -81,16 +80,16 @@ This endpoint retrives the user's profile.
 
 - user: User
 
-Returns 403 if session_token is missing.
+Returns 403 if `token` header is missing.
 
-### POST - `/users/me/photo`
+### POST - `/users/me/meals/:id/photo`
 
-Upload a profile photo for the currently authenticated user. Body of post should contain raw image data.
+Upload a meal's associated image. Body of post should contain raw image data.
 
 #### Returns
 
-- image: String  
-	Contains the path, on this server, to retrieve the image from. e.g. `/profiles/1D5EE0C4-A96E-4B44-9A7C-652E978B3CB5`. Images are not modified in any way after uploading, supports `jpg`, `png`, and `gif` images.
+- meal: Meal  
+	Meal's Contains the path, on this server, to retrieve the image from. e.g. `/photos/1D5EE0C4-A96E-4B44-9A7C-652E978B3CB5`. Images are not modified in any way after uploading, supports `jpg`, `png`, and `gif` images.
 
 Returns 400 if data is missing.
 
@@ -132,7 +131,28 @@ This endpoint is used to set the rating on a specific meal object. The :id is an
 
 - meal: Meal
 
-Returns 403 if bad session, 404 if meal not found, 400 if missing request data.
+Returns 403 if bad auth token, 404 if meal not found, 400 if missing request data.
+
+## Curl examples
+
+**Sign up a new user**
+
+Request: `curl -H "Content-Type: application/json" -d '{"username": "cory", "password" : "1234"}' "http://localhost:8000/signup"`
+
+Response: `{"user":{"token":"anGfKOFTTtQ1xwEkkXjieC9K9s4UNu9y0J9BadGhUtE","username":"cory","password":"1234"}}`
+    
+**Create a meal**
+    
+Request: `curl -H "Content-Type: application/json" -H "token: anGfKOFTTtQ1xwEkkXjieC9K9s4UNu9y0J9BadGhUtE" -d '{"title": "tacos", "calories" : 1500, "description": "really good, from a local place"}' "http://localhost:8000/users/me/meals"`
+    
+Response: `{"meal":{"calories":1500,"id":1,"description":"really good, from a local place","title":"tacos","userId":1,"rating":0,"imagePath":""}}`
+      
+
+**Rate a meal**
+
+Request: `curl -H "token: anGfKOFTTtQ1xwEkkXjieC9K9s4UNu9y0J9BadGhUtE" -H "Content-Type: application/json" -d '{"rating": 5}' "http://localhost:8000/users/me/meals/1/rate"`
+    
+Response: `{"meal":{"calories":1500,"id":1,"description":"really good, from a local place","title":"tacos","userId":1,"rating":5,"imagePath":""}}`
             
         </div>
         <div id="view">

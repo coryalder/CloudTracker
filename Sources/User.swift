@@ -8,7 +8,6 @@ class User {
     var token: String
     
     var name: String? = nil
-    var profile_pic_url: String? = nil
     
     init(username: String, password: String) {
         self.username = username
@@ -20,7 +19,6 @@ class User {
     	id = serialized["id"]
     	
         name = serialized["name"]?.string
-    	profile_pic_url = serialized["profile_pic_url"]?.string
         
     	username = serialized["username"]?.string ?? ""
     	password = serialized["password"]?.string ?? ""
@@ -32,8 +30,7 @@ extension User: Schemable {
     static let schema = "CREATE TABLE IF NOT EXISTS users (" +
         "id INTEGER PRIMARY KEY AUTOINCREMENT," +
         "username TEXT NOT NULL, password TEXT NOT NULL," +
-        "token TEXT NOT NULL, name TEXT," +
-        "profile_pic_url TEXT);"
+        "token TEXT NOT NULL, name TEXT);"
 }
 
 extension User: Model {
@@ -42,7 +39,6 @@ extension User: Model {
         var out = [String: Value?]()
     
         out["name"] = self.name
-        out["profile_pic_url"] = self.profile_pic_url
         
         out["username"] = self.username
         out["password"] = self.password
@@ -63,8 +59,7 @@ extension User: JSONRepresentable {
         return JSON([
             "username": self.username,
             "password": self.password,
-            "token": self.token,
-            "profile_pic_url": self.profile_pic_url ?? ""
+            "token": self.token
         ])
     }
 }

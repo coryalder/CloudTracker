@@ -81,33 +81,38 @@ app.grouped(authware) {
         return Response(status: .ok, json: JSON(["user" : user ]))
     }
     
-    // TODO: make this method work
-    // maybe this can wait. would also need an endpoint to retrieve the image.
-    group.post("/users/me/photo") {
-        request in
+    group.post("/users/me/meals", Int.self, "photo") {
+        request, mealId in
         
-        guard var user = request.storage["user"] as? User else {
+        guard let user = request.storage["user"] as? User,
+            let id = user.id else {
             return Response(status: .badRequest, json: jsonError("User not found"))
+        }
+        
+        guard var meal = try Meal.query.filter("userId", id).filter("id", mealId).first() else {
+            return Response(status: .notFound, json: jsonError("Meal not found"))
         }
         
         var request = request
         
         guard let rawData = try? request.body.becomeBuffer() else {
-            throw ClientError.badRequest
+            return Response(status: .badRequest, json: jsonError("Image data not supplied"))
         }
         
-        if let currentPicName = user.profile_pic_url {
+        // delete old meal url
+        if let currentPicName = meal.imagePath {
             try NSFileManager().removeItem(atPath: "./Public\(currentPicName)")
         }
         
+        // save new meal url
         let data = NSData(bytes: rawData.bytes as [UInt8], length: rawData.bytes.count)
-        let fileName = "/profiles/" + UUID().description
+        let fileName = "/photos/" + UUID().description
         try data.write(toFile:"./Public\(fileName)")
         
-        user.profile_pic_url = fileName
-        try user.save()
+        meal.imagePath = fileName
+        try meal.save()
         
-        return Response(status: .ok, json: JSON(["image": fileName]))
+        return Response(status: .ok, json: JSON(["meal": meal]))
     }
     
     group.post("/users/me/meals") {

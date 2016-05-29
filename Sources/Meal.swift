@@ -11,6 +11,8 @@ class Meal {
     var description: String
     var rating: Int
     
+    var imagePath: String?
+    
     init(title: String, calories: Int, description: String, rating: Int, userId: Int) {
         self.title = title
         self.calories = calories
@@ -27,6 +29,8 @@ class Meal {
     	description = serialized["description"]?.string ?? ""
     	userId = serialized["userId"]?.int ?? 0
         rating = serialized["rating"]?.int ?? 0
+        
+        imagePath = serialized["imagePath"]?.string
     }
     
 }
@@ -38,7 +42,8 @@ extension Meal: Schemable {
         "rating INTEGER NOT NULL," +
         "title TEXT NOT NULL," +
         "calories INTEGER NOT NULL," +
-        "description TEXT NOT NULL);"
+        "description TEXT NOT NULL," +
+        "imagePath TEXT);"
 }
 
 extension Meal: Model {
@@ -48,6 +53,7 @@ extension Meal: Model {
             "calories" : calories,
             "description" : description,
             "rating" : self.rating,
+            "imagePath" : self.imagePath,
             "userId" : userId
         ]
     }
@@ -66,6 +72,7 @@ extension Meal: JSONRepresentable {
             "calories": self.calories,
             "userId" : self.userId,
             "rating" : self.rating,
+            "imagePath" : self.imagePath ?? "",
             "description": self.description
         ])
     }
