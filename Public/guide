@@ -6,7 +6,6 @@
     </head>
     <body style="max-width: 800px; margin-left: auto; margin-right: auto; padding: 1em;">
         <div id="markdown">
-
 # CloudTracker API Guide
 
 ## Entities
@@ -16,8 +15,8 @@
 - username: String
 - password: String
 - token: String
-- profile\_pic\_url: String
-    not a full url, just the filename
+- profile\_pic\_url: String  
+    not a full url, just the path on this server. e.g. `/profiles/1D5EE0C4-A96E-4B44-9A7C-652E978B3CB5`
 
 ### Meal
 
@@ -137,10 +136,15 @@ Returns 403 if bad session, 404 if meal not found, 400 if missing request data.
             
         </div>
         <div id="view">
-            
+            <!-- rendered markdown goes in here -->
         </div>
     
         <script>
+            // this script:
+            // 1. grabs raw markdown from #markdown
+            // 2. renders raw markdown using showdown
+            // 3. displays rendered markdown in #view
+            // 4. hides #markdown
             var markdownNode = document.getElementById("markdown");
             var text = markdownNode.innerHTML;
             var converter = new showdown.Converter();
